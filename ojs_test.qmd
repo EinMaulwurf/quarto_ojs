@@ -1,0 +1,298 @@
+---
+format: revealjs
+---
+
+# Palmer Penguins
+
+```{ojs}
+//| echo: false
+pdata = FileAttachment("palmer-penguins.csv").csv({typed: true})
+
+filtered = pdata.filter(function(penguin) {
+  return bill_length_min < penguin.bill_length_mm &&
+         islands.includes(penguin.island);
+})
+```
+
+```{ojs}
+//| echo: false
+//| output: true
+//| panel: sidebar
+viewof bill_length_min = Inputs.range(
+  [32, 50], 
+  {value: 35, step: 1, label: "Bill length (min):"}
+)
+viewof islands = Inputs.checkbox(
+  ["Torgersen", "Biscoe", "Dream"], 
+  { value: ["Torgersen", "Biscoe"], 
+    label: "Islands:"
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+//| output: true
+Plot.rectY(filtered, 
+  Plot.binX(
+    {y: "count"}, 
+    {x: "body_mass_g", fill: "species", thresholds: 20}
+  ))
+  .plot({
+    facet: {
+      data: filtered,
+      x: "sex",
+      y: "species",
+      marginRight: 80
+    },
+    marks: [
+      Plot.frame(),
+    ]
+  }
+)
+```
+
+# Mikro
+
+```{ojs}
+//| echo: false
+
+// Utility functions
+function utility_function(alpha, x, y, type) {
+  if (type === "cd") {
+    return Math.pow(x, alpha) * Math.pow(y, 1 - alpha);
+  }
+  // Placeholders for other utility functions
+  if (type === "ps") {
+    return alpha * x + (1 - alpha) * y;
+  }
+  if (type === "pc") {
+    return Math.min(alpha * x, y);
+  }
+}
+
+// Find maximal utility
+function maximizeUtility(budget, Px, Py, alpha, type) {
+  let quantity_x, quantity_y, max_utility;
+  
+  if (type === "cd") {
+    quantity_x = (alpha * budget) / Px;
+    quantity_y = ((1 - alpha) * budget) / Py;
+    max_utility = utility_function(alpha, quantity_x, quantity_y, "cd");
+  } else if (type === "ps") {
+    const utility_per_dollar_x = alpha / Px;
+    const utility_per_dollar_y = (1 - alpha) / Py;
+    
+    if (utility_per_dollar_x > utility_per_dollar_y) {
+      quantity_x = budget / Px;
+      quantity_y = 0;
+    } else {
+      quantity_x = 0;
+      quantity_y = budget / Py;
+    }
+    max_utility = utility_function(alpha, quantity_x, quantity_y, "ps");
+  } else if (type === "pc") {
+    quantity_x = budget / (Px + alpha * Py);
+    quantity_y = alpha * (budget / (Px + alpha * Py));
+    max_utility = utility_function(alpha, quantity_x, quantity_y, "pc");
+  }
+  
+  return {max_utility, quantity_x, quantity_y};
+}
+
+// Generate data grid for plotting
+function generateGrid(alpha, Px, Py, budget, type) {
+  const result = maximizeUtility(budget, Px, Py, alpha, type);
+  const maxUtil = result.max_utility;
+  const quantity_x = result.quantity_x;
+  const quantity_y = result.quantity_y;
+  
+  const gridPoints = [];
+  const xRange = [...Array(50)].map((_, i) => i * 2 + 1);
+  const yRange = [...Array(50)].map((_, i) => i * 2 + 1);
+  
+  // Add extra points around the optimal solution
+  const xExtra = [...Array(20)].map((_, i) => 
+    quantity_x * 0.75 + i * (quantity_x * 0.5 / 20));
+  const yExtra = [...Array(20)].map((_, i) => 
+    quantity_y * 0.75 + i * (quantity_y * 0.5 / 20));
+  
+  const allX = [...new Set([...xRange, ...xExtra])].sort((a, b) => a - b);
+  const allY = [...new Set([...yRange, ...yExtra])].sort((a, b) => a - b);
+  
+  allX.forEach(x => {
+    allY.forEach(y => {
+      const u = utility_function(alpha, x, y, type);
+      gridPoints.push({x, y, utility: u});
+    });
+  });
+  
+  // Budget line points
+  const budgetLine = [
+    {x: 0, y: budget / Py, type: "budget"},
+    {x: budget / Px, y: 0, type: "budget"}
+  ];
+  
+  // Generate indifference curve points
+  // For Cobb-Douglas: y = (maxUtil / x^alpha)^(1/(1-alpha))
+  const indifferenceCurve = [];
+  const indifferenceCurve1 = []; // 0.8 * maxUtil
+  const indifferenceCurve2 = []; // 1.2 * maxUtil
+  
+  if (type === "cd") {
+    for (let x = 1; x <= 100; x += 0.5) {
+      const y = Math.pow(maxUtil / Math.pow(x, alpha), 1 / (1 - alpha));
+      const y1 = Math.pow(maxUtil * 0.8 / Math.pow(x, alpha), 1 / (1 - alpha));
+      const y2 = Math.pow(maxUtil * 1.2 / Math.pow(x, alpha), 1 / (1 - alpha));
+      
+      if (y <= 100 && y >= 0) {
+        indifferenceCurve.push({x, y, type: "indiff", level: "main"});
+      }
+      if (y1 <= 100 && y1 >= 0) {
+        indifferenceCurve1.push({x, y: y1, type: "indiff", level: "low"});
+      }
+      if (y2 <= 100 && y2 >= 0) {
+        indifferenceCurve2.push({x, y: y2, type: "indiff", level: "high"});
+      }
+    }
+  }
+  
+  return {
+    gridPoints,
+    budgetLine,
+    indifferenceCurve,
+    indifferenceCurve1,
+    indifferenceCurve2,
+    optimum: {x: quantity_x, y: quantity_y}
+  };
+}
+```
+
+```{ojs}
+//| echo: false
+//| output: true
+//| panel: sidebar
+
+viewof alpha = Inputs.range(
+  [0.01, 0.99], 
+  {value: 0.5, step: 0.01, label: "Wähle α"}
+)
+
+// Fixed utility type selector
+viewof utilityType = Inputs.select(
+  ["cd", "ps", "pc"], 
+  {
+    value: "cd", 
+    label: "Nutzenfunktion:",
+    format: v => {
+      return v === "cd" ? "Cobb-Douglas" : 
+             v === "ps" ? "Perfekte Substitute" : 
+             "Perfekte Komplemente";
+    }
+  }
+)
+
+viewof Px = Inputs.range(
+  [1, 5], 
+  {value: 4, step: 0.1, label: "Preis von Gut 1"}
+)
+
+viewof Py = Inputs.range(
+  [1, 5], 
+  {value: 2, step: 0.1, label: "Preis von Gut 2"}
+)
+
+viewof budget = Inputs.range(
+  [100, 300], 
+  {value: 200, step: 1, label: "Budget"}
+)
+
+// Display the formula based on selected utility type
+// html`<p><strong>Formel:</strong> ${
+//   MathJax.tex(getFormula(utilityType), {display: true})
+// }</p>`
+
+// function getFormula(type) {
+//   if (type === "cd") return "U(x_1, x_2) = x_1^{\\alpha} x_2^{1-\\alpha}";
+//   if (type === "ps") return "U(x_1, x_2) = \\alpha x_1 + (1-\\alpha) x_2";
+//   if (type === "pc") return "U(x_1, x_2) = \\min(\\alpha x_1, x_2)";
+//   return "";
+// }
+```
+
+```{ojs}
+//| echo: false
+//| output: true
+
+// Calculate data for plotting
+data = generateGrid(alpha, Px, Py, budget, utilityType)
+
+// Add some debug capabilities
+// viewof showDebug = Inputs.toggle({label: "Show debug info", value: false})
+
+// Debug info display
+// debugOutput = {
+//   if (showDebug) {
+//     return html`
+//       <pre style="max-height: 200px; overflow: auto">
+//         Budget Line: ${JSON.stringify(data.budgetLine, null, 2)}
+//         Optimum: ${JSON.stringify(data.optimum, null, 2)}
+//         Indifference Points: ${data.indifferenceCurve.length} points
+//       </pre>
+//     `;
+//   }
+//   return html`<p>Enable debug to see data details</p>`;
+// }
+
+// Plot the utility diagram
+Plot.plot({
+  // width: 600,
+  // height: 550,
+  margin: 80,
+  x: {label: "x₁", domain: [0, 100]},
+  y: {label: "x₂", domain: [0, 100]},
+  marks: [
+    // Budget line
+    Plot.line(data.budgetLine, {x: "x", y: "y", stroke: "blue", strokeWidth: 2}),
+    
+    // Indifference curves
+    Plot.line(data.indifferenceCurve, {x: "x", y: "y", stroke: "red", strokeWidth: 2}),
+    Plot.line(data.indifferenceCurve1, {x: "x", y: "y", stroke: "red", strokeWidth: 1, strokeDasharray: "4,4"}),
+    Plot.line(data.indifferenceCurve2, {x: "x", y: "y", stroke: "red", strokeWidth: 1, strokeDasharray: "4,4"}),
+    
+    // Optimal point
+    Plot.dot([data.optimum], {x: "x", y: "y", fill: "green", r: 5}),
+    
+    // Dashed lines to axes - fixed format
+    Plot.line([
+      {x: data.optimum.x, y: 0},
+      {x: data.optimum.x, y: data.optimum.y}
+    ], {
+      stroke: "black",
+      strokeDasharray: "4,4"
+    }),
+    
+    Plot.line([
+      {x: 0, y: data.optimum.y},
+      {x: data.optimum.x, y: data.optimum.y}
+    ], {
+      stroke: "black",
+      strokeDasharray: "4,4"
+    }),
+    
+    // Labels for optimal quantities
+    Plot.text([{x: data.optimum.x, y: 0}], {
+      text: d => d.x.toFixed(2),
+      dy: 15,
+      textAnchor: "middle"
+    }),
+    Plot.text([{x: 0, y: data.optimum.y}], {
+      text: d => d.y.toFixed(2),
+      dx: -15,
+      textAnchor: "middle"
+    })
+  ]
+})
+```
+
+# Lorem Ipsum
