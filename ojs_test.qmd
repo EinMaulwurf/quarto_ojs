@@ -281,12 +281,12 @@ viewof utilityType = Inputs.select(
 
 viewof Px = Inputs.range(
   [1, 5], 
-  {value: 4, step: 0.1, label: "Preis von Gut 1"}
+  {value: 4, step: 0.1, label: "Preis Gut 1"}
 )
 
 viewof Py = Inputs.range(
   [1, 5], 
-  {value: 2, step: 0.1, label: "Preis von Gut 2"}
+  {value: 2, step: 0.1, label: "Preis Gut 2"}
 )
 
 viewof budget = Inputs.range(
