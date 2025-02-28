@@ -62,7 +62,6 @@ function utility_function(alpha, x, y, type) {
   if (type === "cd") {
     return Math.pow(x, alpha) * Math.pow(y, 1 - alpha);
   }
-  // Placeholders for other utility functions
   if (type === "ps") {
     return alpha * x + (1 - alpha) * y;
   }
@@ -154,6 +153,94 @@ function generateGrid(alpha, Px, Py, budget, type) {
       if (y2 <= 100 && y2 >= 0) {
         indifferenceCurve2.push({x, y: y2, type: "indiff", level: "high"});
       }
+    }
+  } else if (type === "ps") {
+    // For Perfect Substitutes (ps)
+    // Handle edge cases for alpha = 0 or alpha = 1
+    if (alpha === 1) {
+      // Utility depends only on x
+      const xMain = maxUtil;
+      const xLow = maxUtil * 0.8;
+      const xHigh = maxUtil * 1.2;
+      
+      for (let y = 0; y <= 100; y += 0.5) {
+        if (xMain <= 100 && xMain >= 0) {
+          indifferenceCurve.push({x: xMain, y, type: "indiff", level: "main"});
+        }
+        if (xLow <= 100 && xLow >= 0) {
+          indifferenceCurve1.push({x: xLow, y, type: "indiff", level: "low"});
+        }
+        if (xHigh <= 100 && xHigh >= 0) {
+          indifferenceCurve2.push({x: xHigh, y, type: "indiff", level: "high"});
+        }
+      }
+    } else if (alpha === 0) {
+      // Utility depends only on y
+      for (let x = 0; x <= 100; x += 0.5) {
+        if (maxUtil <= 100 && maxUtil >= 0) {
+          indifferenceCurve.push({x, y: maxUtil, type: "indiff", level: "main"});
+        }
+        if (maxUtil * 0.8 <= 100 && maxUtil * 0.8 >= 0) {
+          indifferenceCurve1.push({x, y: maxUtil * 0.8, type: "indiff", level: "low"});
+        }
+        if (maxUtil * 1.2 <= 100 && maxUtil * 1.2 >= 0) {
+          indifferenceCurve2.push({x, y: maxUtil * 1.2, type: "indiff", level: "high"});
+        }
+      }
+    } else {
+      // Normal case: y = (u - alpha * x) / (1 - alpha)
+      for (let x = 0; x <= 100; x += 0.5) {
+        const y = (maxUtil - alpha * x) / (1 - alpha);
+        const y1 = (maxUtil * 0.8 - alpha * x) / (1 - alpha);
+        const y2 = (maxUtil * 1.2 - alpha * x) / (1 - alpha);
+        
+        if (y <= 100 && y >= 0) {
+          indifferenceCurve.push({x, y, type: "indiff", level: "main"});
+        }
+        if (y1 <= 100 && y1 >= 0) {
+          indifferenceCurve1.push({x, y: y1, type: "indiff", level: "low"});
+        }
+        if (y2 <= 100 && y2 >= 0) {
+          indifferenceCurve2.push({x, y: y2, type: "indiff", level: "high"});
+        }
+      }
+    }
+  } else if (type === "pc") {
+    // For Perfect Complements (pc)
+    // The indifference curve is L-shaped with two segments:
+    // 1. Horizontal: y = u for x >= u/alpha 
+    // 2. Vertical: x = u/alpha for y >= u
+    
+    // Main indifference curve (utility = maxUtil)
+    // Horizontal segment
+    for (let x = maxUtil/alpha; x <= 100; x += 0.5) {
+      indifferenceCurve.push({x, y: maxUtil, type: "indiff", level: "main"});
+    }
+    // Vertical segment
+    for (let y = maxUtil; y <= 100; y += 0.5) {
+      indifferenceCurve.push({x: maxUtil/alpha, y, type: "indiff", level: "main"});
+    }
+  
+    // Lower indifference curve (utility = 0.8 * maxUtil)
+    const lowerUtil = maxUtil * 0.8;
+    // Horizontal segment
+    for (let x = lowerUtil/alpha; x <= 100; x += 0.5) {
+      indifferenceCurve1.push({x, y: lowerUtil, type: "indiff", level: "low"});
+    }
+    // Vertical segment
+    for (let y = lowerUtil; y <= 100; y += 0.5) {
+      indifferenceCurve1.push({x: lowerUtil/alpha, y, type: "indiff", level: "low"});
+    }
+  
+    // Higher indifference curve (utility = 1.2 * maxUtil)
+    const higherUtil = maxUtil * 1.2;
+    // Horizontal segment
+    for (let x = higherUtil/alpha; x <= 100; x += 0.5) {
+      indifferenceCurve2.push({x, y: higherUtil, type: "indiff", level: "high"});
+    }
+    // Vertical segment
+    for (let y = higherUtil; y <= 100; y += 0.5) {
+      indifferenceCurve2.push({x: higherUtil/alpha, y, type: "indiff", level: "high"});
     }
   }
   
